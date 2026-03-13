@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("RDS")
+}
+
+model User {
+  id                       String            @id @default(uuid())
+  email                    String            @unique
+  name                     String?
+  sessions                 Session[]
+  documents                Document[]
+  meetingTemplates         MeetingTemplate[]
+  preparationHubs          PreparationHub[]  // Added relation to PreparationHub
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  microphoneDeepgramKey    Json?
+  capturescreenDeepgramKey Json?
+  blocked                  Boolean           @default(false)
+}
+
+model Session {
+  id                       String           @id @default(uuid())
+  userId                   String
+  user                     User             @relation(fields: [userId], references: [id])
+  name                     String
+  description              String?
+  conversation             Json[]           @default([])
+  chat                     Json[]           @default([])
+  createdAt                DateTime         @default(now())
+  summary                  String?
+  templateId               String?          @map("meeting_template_id")
+  template                 MeetingTemplate? @relation(fields: [templateId], references: [id])
+  agents                   Agent[]          // Many-to-many relation with Agent
+  isActive                 Boolean          @default(true)
+  isDeleted                Boolean          @default(false)
+  documents                Document[]       // Many-to-many relation with Document
+}
+
+model Document {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  fileUrl     String
+  awsFileUrl  String?
+  uploadedAt  DateTime          @default(now())
+  title       String?
+  description String?
+  isEmbedded  Boolean           @default(false)
+  templates   MeetingTemplate[] // Many-to-many relation with MeetingTemplate
+  sessions    Session[]         // Many-to-many relation with Session
+  preparationHubs PreparationHub[] // One-to-many relation with PreparationHub
+}
+
+model MeetingTemplate {
+  id             String            @id @default(uuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id])
+  purpose        String
+  goal           String
+  additionalInfo String?
+  duration       String            @default("30 mins")
+  createdAt      DateTime          @default(now())
+  documents      Document[]        // Many-to-many relation with Document
+  sessions       Session[]
+  preparationHubs PreparationHub[]  // Added relation to PreparationHub
+}
+
+model PreparationHub {
+  id                 String           @id @default(uuid())
+  name               String
+  userId             String
+  user               User             @relation(fields: [userId], references: [id])
+  meetingTemplateId  String
+  meetingTemplate    MeetingTemplate   @relation(fields: [meetingTemplateId], references: [id])
+  documentId         String?
+  document           Document?         @relation(fields: [documentId], references: [id])
+  additionalDetails  String?
+  questionsAndAnswers Json[]           @default([])
+  createdAt          DateTime         @default(now())
+}
+
+model AgentStore {
+  id          String   @id @default(uuid())
+  title       String   @unique
+  description String
+  toolsUsed   String[]
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+}
+
+model WaitlistEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Agent {
+  id          String    @id @default(uuid())
+  name        String
+  tool        String[]
+  description String
+  imageUrl    String?
+  sessions    Session[]  // Add relation to sessions
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
